@@ -26,6 +26,7 @@ mcp_server/server.py           a FastMCP server over the orders database: two re
 scripts/
   race.sh                      three Claude Code sessions in three git worktrees, one prompt, one model per lane
   judge.sh + judge/            hidden tests the lanes never see, run in every worktree after the race
+  seed.py                      six realistic orders for the page and the MCP tools
   trust-probe.sh               pre-answer the "trust this folder" dialog for new worktrees, off camera
 .github/workflows/
   ci.yml                       ruff + pytest on push and PR

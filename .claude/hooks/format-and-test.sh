@@ -5,7 +5,10 @@ INPUT=$(cat)
 FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""')
 case "$FILE" in *.py) ;; *) exit 0 ;; esac
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
-PY=".venv/bin/python"; [ -x "$PY" ] || PY="python3"
+# The venv lives in the main checkout; a git worktree or a fresh clone may not have one yet.
+PY=".venv/bin/python"
+[ -x "$PY" ] || PY="$(git rev-parse --git-common-dir 2>/dev/null)/../.venv/bin/python"
+[ -x "$PY" ] || { jq -n '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:"hook format-and-test: no .venv found, skipped. Run: python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt"}}'; exit 0; }
 
 FMT=$("$PY" -m ruff format "$FILE" 2>&1 | tail -1)
 "$PY" -m ruff check --fix -q "$FILE" >/dev/null 2>&1
