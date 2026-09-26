@@ -1,5 +1,6 @@
 """Put a few realistic orders in the database so the page and the MCP tools have something to show.
 Run: .venv/bin/python scripts/seed.py"""
+
 import os
 import sys
 

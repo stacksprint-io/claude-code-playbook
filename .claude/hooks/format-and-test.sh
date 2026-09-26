@@ -17,7 +17,7 @@ NAME=$(basename "$FILE" .py)
 TARGET="tests/test_${NAME}.py"
 case "$FILE" in tests/*) TARGET="$FILE" ;; esac
 [ -f "$TARGET" ] || TARGET="tests"
-OUT=$("$PY" -m pytest "$TARGET" -q -p no:cacheprovider 2>&1 | tail -3 | tr '\n' ' ')
+OUT=$("$PY" -m pytest "$TARGET" -p no:cacheprovider 2>&1 | tail -1)
 
 jq -n --arg c "hook format-and-test: ${FMT}. pytest ${TARGET}: ${OUT}" \
   '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:$c}}'
