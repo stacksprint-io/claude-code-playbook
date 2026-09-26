@@ -2,7 +2,6 @@
 # Three Claude Code sessions, three git worktrees, one prompt, one model per lane.
 # Usage:  scripts/race.sh "the prompt"  [claude-opus-5-5 claude-opus-5 claude-sonnet-5]
 # Worktrees ../<repo>-lane1..3 are created if missing (branch race/lane-N from HEAD).
-set -e
 PROMPT="${1:?usage: race.sh \"prompt\" [model ...]}"; shift
 MODELS=("$@"); [ ${#MODELS[@]} -eq 0 ] && MODELS=(claude-opus-5-5 claude-opus-5 claude-sonnet-5)
 REPO="$(git rev-parse --show-toplevel)"; NAME="$(basename "$REPO")"; PARENT="$(dirname "$REPO")"

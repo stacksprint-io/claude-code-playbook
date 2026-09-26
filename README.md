@@ -84,7 +84,8 @@ cheap and the reviewer gets the strongest model.
 A skill is a `SKILL.md` Claude loads when your request matches its `description`. The
 description is the whole trick: `fastapi-endpoint` lists the verbs people actually type
 ("add", "expose", "create an endpoint for"). `release-notes` shows the other pattern: a shell
-command inlined with `` !`git log ...` `` so the skill sees live data.
+command inlined with `` !`git log ...` `` so the skill sees live data. Keep those inline
+commands plain; command substitution inside them is blocked by the permission check.
 
 ### MCP (`mcp_server/server.py`)
 
