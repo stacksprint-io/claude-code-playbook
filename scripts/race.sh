@@ -22,7 +22,9 @@ for p in 0 1 2; do tmux select-pane -t race:0.$p -T " ${MODELS[$((p+1))]} "; don
 (
   sleep 2
   for p in 0 1 2; do
-    tmux send-keys -t race:0.$p "claude --model ${MODELS[$((p+1))]} --permission-mode acceptEdits --effort medium --allowedTools 'Bash(.venv/bin/python -m pytest:*)' 'Bash(git:*)'"
+    # A race is unattended by definition: three lanes cannot answer three dialogs. So the lanes
+    # get the whole shell and the project's skills pre-approved; scope them tighter for interactive work.
+    tmux send-keys -t race:0.$p "claude --model ${MODELS[$((p+1))]} --permission-mode acceptEdits --effort medium --allowedTools Bash Skill"
   done
   sleep 1; for p in 0 1 2; do tmux send-keys -t race:0.$p Enter; done
   sleep 11; for p in 0 1 2; do tmux send-keys -t race:0.$p "$PROMPT"; done

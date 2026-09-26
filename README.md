@@ -101,7 +101,8 @@ out of the allowlist above so Claude has to ask before changing a real order.
 
 `race.sh "the prompt" claude-opus-5-5 claude-opus-5 claude-sonnet-5` creates three worktrees,
 opens three tmux panes, launches one Claude Code per lane with `--model` pinned, and sends the same
-prompt to all three in the same second. `judge.sh` then copies `judge/hidden_tests.py` into each
+prompt to all three in the same second (the lanes run with the shell and the project skills
+pre-approved, because nobody is there to answer a dialog). `judge.sh` then copies `judge/hidden_tests.py` into each
 lane and runs the full suite. The lanes never see the hidden file, so a model cannot game a test
 it has not read.
 
