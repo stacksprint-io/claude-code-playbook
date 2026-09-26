@@ -1,0 +1,26 @@
+name: PR review by Claude
+# Every pull request gets a real review comment: what is wrong, what is missing, what is fine.
+on:
+  pull_request:
+    types: [opened, synchronize]
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Run `gh pr diff ${{ github.event.pull_request.number }}` and read every touched file in full.
+            Check the change against CLAUDE.md. Post ONE comment with `gh pr comment` containing numbered
+            findings in this order: bugs, missing tests, convention drift, style. Say plainly if it is clean.
+          claude_args: |
+            --allowedTools "Read,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr comment:*)"

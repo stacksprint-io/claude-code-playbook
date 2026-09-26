@@ -1,0 +1,40 @@
+name: Auto-fix on CI failure
+# When CI fails on a branch, Claude reads the failure, makes the minimal fix, and pushes it
+# back to the same branch. The guard step stops it from chasing its own tail.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  fix:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+      - name: Skip if the last commit was already an auto-fix
+        id: guard
+        run: |
+          if [[ "$(git log -1 --pretty=%s)" == fix:\ auto-fix* ]]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip == 'false'
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+        if: steps.guard.outputs.skip == 'false'
+      - uses: anthropics/claude-code-action@v1
+        if: steps.guard.outputs.skip == 'false'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            CI just failed on branch ${{ github.event.workflow_run.head_branch }} of ${{ github.repository }}.
+            The branch is checked out here. Run `python -m pytest` and `ruff check app tests`, find the
+            root cause, make the minimal correct fix, then commit and push to this same branch. Commit
+            message: "fix: auto-fix from failing CI: <what was wrong>". Do not open a pull request.
+          claude_args: |
+            --allowedTools "Read,Edit,Write,Bash(python -m pytest:*),Bash(ruff:*),Bash(git:*)"
