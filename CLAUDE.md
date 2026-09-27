@@ -28,5 +28,5 @@ three-lane worktree race and the hidden-test judge. The README maps each to the 
 
 ## Keep this file small
 
-Claude Code reads this file into every session. Past ~40k characters it warns and beyond
-150k it stops loading it properly. Put history and lessons in `docs/`, not here.
+Claude Code reads this file into every session. Past 150k characters it warns and stops
+loading it properly. Put history and lessons in `docs/`, not here.
