@@ -17,7 +17,8 @@ tmux new-session -d -s race -x 220 -y 50 -c "${LANES[1]}" "PROMPT='> ' zsh -df"
 tmux set -g default-command "PROMPT='> ' zsh -df"
 tmux set -g pane-border-status top; tmux set -g pane-border-format " #{pane_title} "; tmux set -g status off
 tmux split-window -h -t race -c "${LANES[2]}"; tmux split-window -h -t race -c "${LANES[3]}"
-tmux select-layout -t race even-horizontal
+# RACE_LAYOUT=even-vertical stacks the lanes for a narrow or tall terminal; side by side is the default.
+tmux select-layout -t race "${RACE_LAYOUT:-even-horizontal}"
 for p in 0 1 2; do tmux select-pane -t race:0.$p -T " ${MODELS[$((p+1))]} "; done
 (
   sleep 2
