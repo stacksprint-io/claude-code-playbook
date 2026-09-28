@@ -9,6 +9,9 @@ permissions:
   id-token: write
 jobs:
   review:
+    # The auto-fix workflow pushes as claude[bot]; the action refuses bot-initiated runs, so skip
+    # those cleanly instead of failing the check. A human push gets a fresh review.
+    if: github.actor != 'claude[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
