@@ -11,7 +11,8 @@ jobs:
   review:
     # The auto-fix workflow pushes as claude[bot]; the action refuses bot-initiated runs, so skip
     # those cleanly instead of failing the check. A human push gets a fresh review.
-    if: github.actor != 'claude[bot]'
+    # Same-repo branches only: fork PRs get no secrets anyway, so this skips cleanly instead of failing.
+    if: github.actor != 'claude[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
