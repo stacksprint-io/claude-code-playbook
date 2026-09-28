@@ -1,4 +1,3 @@
-import os
 """Orders service: FastAPI + SQLite + a Bootstrap page. Small on purpose."""
 
 from contextlib import asynccontextmanager
