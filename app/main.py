@@ -2,7 +2,6 @@
 
 from contextlib import asynccontextmanager
 
-import os
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
