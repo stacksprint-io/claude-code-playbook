@@ -15,7 +15,7 @@
     <div class="col-auto"><button class="btn btn-primary">Add order</button></div>
   </form>
   <table class="table table-striped">
-    <thead><tr><th>#</th><th>Customer</th><th>Total</th><th>Status</th><th>Created</th></tr></thead>
+    <thead><tr><th>#</th><th>Customer</th><th>Total</th><th>Status</th><th>Created</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
 </div>
@@ -25,9 +25,15 @@
     const res = await fetch("/orders");
     const orders = await res.json();
     document.getElementById("rows").innerHTML = orders.map((o) =>
-      `<tr><td>${o.id}</td><td>${o.customer}</td><td>${money(o.total_cents)}</td><td><span class="badge text-bg-secondary">${o.status}</span></td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`
+      `<tr><td>${o.id}</td><td>${o.customer}</td><td>${money(o.total_cents)}</td><td><span class="badge text-bg-secondary">${o.status}</span></td><td>${new Date(o.created_at).toLocaleString()}</td><td>${o.status === "new" ? `<button class="btn btn-sm btn-outline-success" data-pay="${o.id}">Pay</button>` : ""}</td></tr>`
     ).join("");
   }
+  document.getElementById("rows").addEventListener("click", async (e) => {
+    const id = e.target.dataset.pay;
+    if (!id) return;
+    await fetch(`/orders/${id}/pay`, { method: "PATCH" });
+    load();
+  });
   document.getElementById("new-order").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
