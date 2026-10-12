@@ -8,7 +8,6 @@ function memory(on, session = 's1', start = {}) {
   on('session.id', () => ({ value: session }))
   on('store.get', ($, e) => ({ value: saved[e.key] }))
   on('store.set', ($, e) => { saved[e.key] = e.value; return { value: undefined } })
-  on('store.delete', ($, e) => { delete saved[e.key]; return { value: undefined } })
   return saved
 }
 
@@ -141,12 +140,43 @@ test('over budget, adding a dollar to send a prompt raises this session only', a
   expect(saved).toEqual({ budget: 1, extra: { s1: 1 } })
 })
 
-test('a prompt from Remote Control, or with no origin, is asked about too', async ($, on) => {
+test('a prompt from Remote Control is asked about too', async ($, on) => {
   on('session.usage', usage(1.25))
   const seen = asking(on, 'Stop here')
   on('prompt.submit', ($, e) => ({ text: e.text }))
   expect((await $.prompt.submit({ text: 'from my phone', origin: { kind: 'bridge' } })).drop).toBeDefined()
+  expect(seen.asked).toBe(1)
+})
+
+test('a prompt with no origin is asked about, to be safe', async ($, on) => {
+  on('session.usage', usage(1.25))
+  const seen = asking(on, 'Stop here')
+  on('prompt.submit', ($, e) => ({ text: e.text }))
   expect((await $.prompt.submit({ text: 'no origin' })).drop).toBeDefined()
+  expect(seen.asked).toBe(1)
+})
+
+test('a session that adds again is kept when older sessions are dropped', async ($, on) => {
+  on('session.usage', usage(1.25))
+  const older = Object.fromEntries(Array.from({ length: 20 }, (_, i) => ['old' + i, 1]))
+  const saved = memory(on, 'old0', { budget: 1, extra: older })
+  on('tool.call', tools('Add $1 and keep going'))
+  await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  expect(Object.keys(saved.extra).length).toBe(20)
+  expect(saved.extra.old0).toBe(2)
+  expect(Object.keys(saved.extra).at(-1)).toBe('old0')
+})
+
+test('after /budget, a reload starts from the new amount', async ($, on) => {
+  on('session.usage', usage(3.5))
+  memory(on, 's1', { budget: 1 })
+  const seen = asking(on, 'Add $1 and keep going')
+  startable(on)
+  await start($)
+  await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  await $.command.run({ command: 'budget', args: '3' })
+  await start($) // the reload: $3.00, not $4.00, so $3.50 is over
+  await $.tool.call({ tool: 'Read', file_path: 'README.md' })
   expect(seen.asked).toBe(2)
 })
 

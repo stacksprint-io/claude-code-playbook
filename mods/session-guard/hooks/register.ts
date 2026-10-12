@@ -79,13 +79,16 @@ async function costNow($): Promise<number> {
 
 // "Add $1" raises this session only. Each session's extra is saved under its own id, so a reload
 // keeps it, sessions running side by side keep their own, and a new session starts from /budget.
+// Two sessions adding at the same instant can still overwrite each other: rare, and it costs one dollar.
 async function addDollar($) {
-  budget += 1
   const session = await $.session.id()
   const extra = (await $.store.get('extra')) ?? {}
-  extra[session] = (extra[session] ?? 0) + 1
-  // Keep the 20 most recent sessions
+  const amount = (extra[session] ?? 0) + 1
+  // Move this session to the end, then keep the 20 that added most recently
+  delete extra[session]
+  extra[session] = amount
   await $.store.set('extra', Object.fromEntries(Object.entries(extra).slice(-20)))
+  budget += 1
   $.ui.invalidate('ui.render')
 }
 
