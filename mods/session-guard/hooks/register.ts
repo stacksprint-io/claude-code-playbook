@@ -94,8 +94,7 @@ async function budgetGate($, e, next) {
     // Nobody to ask: keep the safe answer
   }
   if (answer === 'Add $1 and keep going') {
-    budget += 1
-    await $.store.set('budget', budget)
+    budget += 1 // this session only: /budget is what new sessions start with
     $.ui.invalidate('ui.render')
     return next(e)
   }
@@ -316,6 +315,10 @@ export function register(on) {
 
   // ---------- 2 · ANSWER: a new prompt over budget waits for your yes ----------
   on('prompt.submit', async ($, e, next) => {
+    // Only ask about prompts a person sent. A notification or another plugin's prompt goes through;
+    // any tool call it leads to still meets budgetGate.
+    const kind = e.origin?.kind
+    if (kind !== 'composer' && kind !== 'bridge') return next(e)
     const cost = await costNow($)
     if (cost < budget) return next(e)
     let answer = 'Stop here'
@@ -328,8 +331,7 @@ export function register(on) {
       // Nobody to ask: keep the safe answer
     }
     if (answer !== 'Add $1 and send') return { drop: 'Over your $' + budget.toFixed(2) + ' budget. Raise it with /budget, or start a new session.' }
-    budget += 1
-    await $.store.set('budget', budget)
+    budget += 1 // this session only
     $.ui.invalidate('ui.render')
     return next(e)
   })
@@ -341,7 +343,7 @@ export function register(on) {
     budget = amount
     await $.store.set('budget', budget)
     $.ui.invalidate('ui.render')
-    return { text: 'Budget set to $' + budget.toFixed(2) + ' for this session.' }
+    return { text: 'Budget set to $' + budget.toFixed(2) + '. New sessions start with it too.' }
   })
 
   // ---------- 3 · REWRITE: recording mode ----------
