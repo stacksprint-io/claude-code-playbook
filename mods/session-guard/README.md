@@ -47,6 +47,8 @@ claude plugin validate ./mods/session-guard
 
 The `hooks:` line lists the events it handles, and `calls:` lists everything it asks Claude Code to do. This mod calls `$.session.usage` (context and cost), `$.session.cwd`, `$.session.id` and `$.session.model` (the folder, the session and the model it shows), `$.store` (to remember your budget and recording mode), `$.command.register` and `$.ui` (to draw and to ask you). It runs no programs, makes no network requests and doesn't read files.
 
+It doesn't change any tool's input. Its `tool.call` hook passes every call on unchanged through `budgetGate`, or refuses it when the session is over budget.
+
 ## What the budget guard does and doesn't do
 
 - It reads the cost Claude Code reports for the session (the same figure as `/cost`). Cost updates as each request finishes, so a session can go a little past the budget before the guard's next check.
