@@ -1,0 +1,14 @@
+{
+  "name": "stacksprint",
+  "owner": {
+    "name": "StackSprint"
+  },
+  "description": "StackSprint's Claude Code mods and plugins, built and explained on the channel.",
+  "plugins": [
+    {
+      "name": "session-guard",
+      "source": "./mods/session-guard",
+      "description": "A live HUD for Claude Code: status band, /hud dashboard, budget guard, recording mode."
+    }
+  ]
+}
