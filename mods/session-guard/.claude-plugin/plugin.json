@@ -1,6 +1,6 @@
 {
   "name": "session-guard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A live HUD for Claude Code: a status band and a /hud dashboard (context, cost, tools, files), a budget guard that pauses Claude at your spending limit, and a recording mode that hides keys, tokens and emails on screen.",
   "author": { "name": "StackSprint" },
   "homepage": "https://github.com/stacksprint-io/claude-code-playbook/tree/main/mods/session-guard",

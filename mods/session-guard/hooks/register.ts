@@ -77,6 +77,17 @@ async function costNow($): Promise<number> {
   return usage.cost ? usage.cost.usd : 0
 }
 
+// "Add $1" raises this session only. It's saved under the session's id, so a reload keeps it
+// and a new session starts from your /budget amount.
+async function addDollar($) {
+  budget += 1
+  const session = await $.session.id()
+  const extra = await $.store.get('extra')
+  const amount = (extra?.session === session ? extra.amount : 0) + 1
+  await $.store.set('extra', { session, amount })
+  $.ui.invalidate('ui.render')
+}
+
 // 2 · ANSWER: hold the call when the session is over budget, and ask
 async function budgetGate($, e, next) {
   const cost = await costNow($)
@@ -94,8 +105,7 @@ async function budgetGate($, e, next) {
     // Nobody to ask: keep the safe answer
   }
   if (answer === 'Add $1 and keep going') {
-    budget += 1 // this session only: /budget is what new sessions start with
-    $.ui.invalidate('ui.render')
+    await addDollar($)
     return next(e)
   }
   stopped = true
@@ -108,8 +118,11 @@ export function register(on) {
     cwd = await $.session.cwd()
     recording = (await $.store.get('recording')) === true
     budget = Number((await $.store.get('budget')) ?? 1)
+    // After a reload, keep what you added this session
+    const extra = await $.store.get('extra')
+    if (extra?.session === (await $.session.id())) budget += extra.amount
     await $.command.register({ name: 'hud', description: 'Open the session dashboard', immediate: true })
-    await $.command.register({ name: 'budget', description: 'Set the session budget in dollars', argumentHint: '[amount]', immediate: true })
+    await $.command.register({ name: 'budget', description: 'Set the budget each session starts with, in dollars', argumentHint: '[amount]', immediate: true })
     await $.command.register({ name: 'recording', description: 'Hide keys, tokens and emails on screen', argumentHint: '[on|off]', immediate: true })
     return next(e)
   })
@@ -317,8 +330,10 @@ export function register(on) {
   on('prompt.submit', async ($, e, next) => {
     // Only ask about prompts a person sent. A notification or another plugin's prompt goes through;
     // any tool call it leads to still meets budgetGate.
+    // composer is your Enter at the terminal, bridge a message from Remote Control.
+    // With no origin at all, ask anyway.
     const kind = e.origin?.kind
-    if (kind !== 'composer' && kind !== 'bridge') return next(e)
+    if (kind && kind !== 'composer' && kind !== 'bridge') return next(e)
     const cost = await costNow($)
     if (cost < budget) return next(e)
     let answer = 'Stop here'
@@ -331,8 +346,7 @@ export function register(on) {
       // Nobody to ask: keep the safe answer
     }
     if (answer !== 'Add $1 and send') return { drop: 'Over your $' + budget.toFixed(2) + ' budget. Raise it with /budget, or start a new session.' }
-    budget += 1 // this session only
-    $.ui.invalidate('ui.render')
+    await addDollar($)
     return next(e)
   })
 
@@ -342,6 +356,7 @@ export function register(on) {
     if (!(amount > 0)) return { text: 'Budget is $' + budget.toFixed(2) + '. Set one with /budget 2.50' }
     budget = amount
     await $.store.set('budget', budget)
+    await $.store.delete('extra')
     $.ui.invalidate('ui.render')
     return { text: 'Budget set to $' + budget.toFixed(2) + '. New sessions start with it too.' }
   })

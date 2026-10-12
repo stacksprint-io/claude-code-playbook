@@ -2,6 +2,36 @@ import { expect, test } from 'claude-code/testing'
 
 const usage = (usd: number) => () => ({ value: { context: { window: 200000, percent: 34 }, rateLimits: [], cost: { usd } } })
 
+// A store kept in memory, and a session id, so a test can read what the mod saved
+function memory(on, session = 's1', start = {}) {
+  const saved = { ...start }
+  on('session.id', () => ({ value: session }))
+  on('store.get', ($, e) => ({ value: saved[e.key] }))
+  on('store.set', ($, e) => { saved[e.key] = e.value; return { value: undefined } })
+  on('store.delete', ($, e) => { delete saved[e.key]; return { value: undefined } })
+  return saved
+}
+
+// What session.start needs, registered before the test's first call on $
+function startable(on) {
+  on('session.cwd', () => ({ value: '/project' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.start', () => ({ cwd: '/project' }))
+}
+
+// Fire session.start the way Claude Code does on launch and after a reload
+const start = ($) => $.session.start({ cwd: '/project', surface: null, isInteractive: true })
+
+// Count the questions the mod asks, and answer each one with choice
+function asking(on, choice) {
+  const seen = { asked: 0 }
+  on('tool.call', ($, e) => {
+    if (e.tool === 'AskUserQuestion') seen.asked += 1
+    return tools(choice)($, e)
+  })
+  return seen
+}
+
 // Answer Claude Code's side of a tool call: the question dialog, or the tool itself
 function tools(choice: string) {
   return ($, e) =>
@@ -38,7 +68,7 @@ test('after you say stop, later calls in the same turn are refused without askin
 
 test('over budget, adding a dollar lets the call run', async ($, on) => {
   on('session.usage', usage(1.25))
-  on('store.set', () => ({ value: undefined }))
+  memory(on)
   on('tool.call', tools('Add $1 and keep going'))
   expect(await $.tool.call({ tool: 'Bash', command: 'pytest' })).toEqual({ result: 'ran' })
 })
@@ -64,16 +94,58 @@ test('over budget, a prompt nobody typed goes through without asking', async ($,
   expect(asked).toBe(0)
 })
 
-test('adding a dollar raises this session only, /budget is what gets saved', async ($, on) => {
+test('adding a dollar is saved for this session only, /budget is the amount new sessions start with', async ($, on) => {
   on('session.usage', usage(1.25))
-  const saved = []
-  on('store.set', ($, e) => { saved.push(e); return { value: undefined } })
+  const saved = memory(on, 's1', { budget: 1 })
   on('tool.call', tools('Add $1 and keep going'))
-  expect(await $.tool.call({ tool: 'Bash', command: 'pytest' })).toEqual({ result: 'ran' })
-  expect(saved).toEqual([])
+  await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  expect(saved).toEqual({ budget: 1, extra: { session: 's1', amount: 1 } })
   const reply = await $.command.run({ command: 'budget', args: '3' })
   expect(reply.text).toBe('Budget set to $3.00. New sessions start with it too.')
-  expect(saved.length).toBe(1)
+  expect(saved).toEqual({ budget: 3 })
+})
+
+test('a reload keeps the dollar you added this session', async ($, on) => {
+  on('session.usage', usage(1.25))
+  memory(on, 's1', { budget: 1 })
+  const seen = asking(on, 'Add $1 and keep going')
+  startable(on)
+  await start($)
+  await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  expect(seen.asked).toBe(1)
+  await start($) // the reload
+  expect(await $.tool.call({ tool: 'Read', file_path: 'README.md' })).toEqual({ result: 'ran' })
+  expect(seen.asked).toBe(1)
+})
+
+test('a new session starts from your /budget amount, not last session\'s extra', async ($, on) => {
+  on('session.usage', usage(1.25))
+  memory(on, 's2', { budget: 1, extra: { session: 's1', amount: 3 } })
+  const seen = asking(on, 'Stop here')
+  startable(on)
+  await start($)
+  const out = await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  expect(out.deny).toMatch(/\$1\.00 budget/)
+  expect(seen.asked).toBe(1)
+})
+
+test('over budget, adding a dollar to send a prompt saves nothing for new sessions', async ($, on) => {
+  on('session.usage', usage(1.25))
+  const saved = memory(on, 's1', { budget: 1 })
+  on('tool.call', tools('Add $1 and send'))
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  const out = await $.prompt.submit({ text: 'keep going', origin: { kind: 'composer' } })
+  expect(out.drop).toBeUndefined()
+  expect(saved.budget).toBe(1)
+})
+
+test('a prompt from Remote Control, or with no origin, is asked about too', async ($, on) => {
+  on('session.usage', usage(1.25))
+  const seen = asking(on, 'Stop here')
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  expect((await $.prompt.submit({ text: 'from my phone', origin: { kind: 'bridge' } })).drop).toBeDefined()
+  expect((await $.prompt.submit({ text: 'no origin' })).drop).toBeDefined()
+  expect(seen.asked).toBe(2)
 })
 
 test('the status band shows context, budget, tool calls and recording mode', async ($, on) => {
