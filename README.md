@@ -32,7 +32,8 @@ scripts/
   ci.yml                       ruff + pytest on push and PR
   auto-fix.yml                 CI fails → Claude fixes it and pushes to the same branch (with a loop guard)
   pr-review.yml                every PR gets a real review comment from Claude
-.claude-plugin/marketplace.json  this repo as a plugin marketplace (name: stacksprint)
+.claude-plugin/
+  marketplace.json             this repo as a plugin marketplace (name: stacksprint)
 mods/session-guard/            a Claude Code mod: status band, /hud dashboard, budget guard, recording mode
 app/ · static/ · tests/        the project all of this runs against: FastAPI + SQLite + Bootstrap, 3 endpoints, 3 tests
 ```
