@@ -47,8 +47,33 @@ test('over budget, a new prompt is dropped when you say stop', async ($, on) => 
   on('session.usage', usage(1.25))
   on('tool.call', tools('Stop here'))
   on('prompt.submit', ($, e) => ({ text: e.text }))
-  const out = await $.prompt.submit({ text: 'now commit it' })
+  const out = await $.prompt.submit({ text: 'now commit it', origin: { kind: 'composer' } })
   expect(out.drop).toMatch(/^Over your \$1\.00 budget/)
+})
+
+test('over budget, a prompt nobody typed goes through without asking', async ($, on) => {
+  on('session.usage', usage(1.25))
+  let asked = 0
+  on('tool.call', ($, e) => {
+    if (e.tool === 'AskUserQuestion') asked += 1
+    return tools('Stop here')($, e)
+  })
+  on('prompt.submit', ($, e) => ({ text: e.text }))
+  const out = await $.prompt.submit({ text: 'Background task finished', origin: { kind: 'task-notification' } })
+  expect(out.drop).toBeUndefined()
+  expect(asked).toBe(0)
+})
+
+test('adding a dollar raises this session only, /budget is what gets saved', async ($, on) => {
+  on('session.usage', usage(1.25))
+  const saved = []
+  on('store.set', ($, e) => { saved.push(e); return { value: undefined } })
+  on('tool.call', tools('Add $1 and keep going'))
+  expect(await $.tool.call({ tool: 'Bash', command: 'pytest' })).toEqual({ result: 'ran' })
+  expect(saved).toEqual([])
+  const reply = await $.command.run({ command: 'budget', args: '3' })
+  expect(reply.text).toBe('Budget set to $3.00. New sessions start with it too.')
+  expect(saved.length).toBe(1)
 })
 
 test('the status band shows context, budget, tool calls and recording mode', async ($, on) => {

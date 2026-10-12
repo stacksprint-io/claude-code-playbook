@@ -34,7 +34,7 @@ Run `/plugin` to check it loaded: you'll see `1 mod active · session-guard`.
 | Command | What it does |
 |---|---|
 | `/hud` | opens the dashboard pane (Esc closes it) |
-| `/budget 2.50` | sets the session budget in dollars; `/budget` alone shows it |
+| `/budget 2.50` | sets the budget in dollars for each session, kept for new sessions too; `/budget` alone shows it |
 | `/recording on` · `/recording off` | turns recording mode on or off; it stays on across sessions until you turn it off |
 
 ## Before you install any mod, read what it can do
@@ -50,7 +50,8 @@ The `hooks:` line lists the events it handles, and `calls:` lists everything it 
 ## What the budget guard does and doesn't do
 
 - It reads the cost Claude Code reports for the session (the same figure as `/cost`). Cost updates as each request finishes, so a session can go a little past the budget before the guard's next check.
-- It checks before each tool call and before each prompt you send. "Stop here" refuses the call (Claude is told to stop and summarize) or drops the prompt back into your input box. If Claude tries another tool in the same turn, it's refused without asking you again.
+- It checks before each tool call and before each prompt you send. Prompts nobody typed, such as a background task's notification or another plugin's message, go through, and any tool call they lead to is still checked.
+- "Add $1" raises the budget for this session only. New sessions start from the amount you set with `/budget`. "Stop here" refuses the call (Claude is told to stop and summarize) or drops the prompt back into your input box. If Claude tries another tool in the same turn, it's refused without asking you again.
 - On a Claude subscription, cost is an estimate of API pricing, not a bill.
 
 ## What recording mode does and doesn't do
@@ -64,6 +65,13 @@ The `hooks:` line lists the events it handles, and `calls:` lists everything it 
 - This mod: disable it in `/plugin`
 - Every installed mod for one session: `claude --safe-mode`
 - Every installed mod everywhere: `"disableAllHooks": true` in `~/.claude/settings.json`
+
+## Changes since the video
+
+The video builds 0.1.0. Version 0.1.1 fixes two things our own PR review found:
+
+- "Add $1" no longer saves the higher budget for every future session, only this one.
+- The budget guard asks only about prompts a person sent, so a background notification over budget isn't dropped.
 
 ## Tests
 
