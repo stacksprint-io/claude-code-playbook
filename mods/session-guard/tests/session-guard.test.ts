@@ -55,15 +55,11 @@ test('over budget, the call is held and stopped when you say stop', async ($, on
 
 test('after you say stop, later calls in the same turn are refused without asking again', async ($, on) => {
   on('session.usage', usage(1.25))
-  let asked = 0
-  on('tool.call', ($, e) => {
-    if (e.tool === 'AskUserQuestion') asked += 1
-    return tools('Stop here')($, e)
-  })
+  const seen = asking(on, 'Stop here')
   await $.tool.call({ tool: 'Edit', file_path: 'app/main.py' })
   const out = await $.tool.call({ tool: 'Edit', file_path: 'tests/test_orders.py' })
   expect(out.deny).toMatch(/^Paused by session-guard/)
-  expect(asked).toBe(1)
+  expect(seen.asked).toBe(1)
 })
 
 test('over budget, adding a dollar lets the call run', async ($, on) => {
@@ -83,15 +79,11 @@ test('over budget, a new prompt is dropped when you say stop', async ($, on) => 
 
 test('over budget, a prompt nobody typed goes through without asking', async ($, on) => {
   on('session.usage', usage(1.25))
-  let asked = 0
-  on('tool.call', ($, e) => {
-    if (e.tool === 'AskUserQuestion') asked += 1
-    return tools('Stop here')($, e)
-  })
+  const seen = asking(on, 'Stop here')
   on('prompt.submit', ($, e) => ({ text: e.text }))
   const out = await $.prompt.submit({ text: 'Background task finished', origin: { kind: 'task-notification' } })
   expect(out.drop).toBeUndefined()
-  expect(asked).toBe(0)
+  expect(seen.asked).toBe(0)
 })
 
 test('adding a dollar is saved for this session only, /budget is the amount new sessions start with', async ($, on) => {
@@ -99,28 +91,38 @@ test('adding a dollar is saved for this session only, /budget is the amount new 
   const saved = memory(on, 's1', { budget: 1 })
   on('tool.call', tools('Add $1 and keep going'))
   await $.tool.call({ tool: 'Bash', command: 'pytest' })
-  expect(saved).toEqual({ budget: 1, extra: { session: 's1', amount: 1 } })
+  expect(saved).toEqual({ budget: 1, extra: { s1: 1 } })
   const reply = await $.command.run({ command: 'budget', args: '3' })
   expect(reply.text).toBe('Budget set to $3.00. New sessions start with it too.')
-  expect(saved).toEqual({ budget: 3 })
+  expect(saved).toEqual({ budget: 3, extra: {} })
 })
 
-test('a reload keeps the dollar you added this session', async ($, on) => {
-  on('session.usage', usage(1.25))
-  memory(on, 's1', { budget: 1 })
+test('a reload keeps the dollars you added this session', async ($, on) => {
+  on('session.usage', usage(2.25))
+  const saved = memory(on, 's1', { budget: 1 })
   const seen = asking(on, 'Add $1 and keep going')
   startable(on)
   await start($)
   await $.tool.call({ tool: 'Bash', command: 'pytest' })
-  expect(seen.asked).toBe(1)
-  await start($) // the reload
+  await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  expect(seen.asked).toBe(2)
+  expect(saved.extra).toEqual({ s1: 2 })
+  await start($) // the reload: $1 + $2 added = $3, over the $2.25 spent
   expect(await $.tool.call({ tool: 'Read', file_path: 'README.md' })).toEqual({ result: 'ran' })
-  expect(seen.asked).toBe(1)
+  expect(seen.asked).toBe(2)
+})
+
+test('sessions running side by side keep their own added dollars', async ($, on) => {
+  on('session.usage', usage(1.25))
+  const saved = memory(on, 's2', { budget: 1, extra: { s1: 1 } })
+  on('tool.call', tools('Add $1 and keep going'))
+  await $.tool.call({ tool: 'Bash', command: 'pytest' })
+  expect(saved.extra).toEqual({ s1: 1, s2: 1 })
 })
 
 test('a new session starts from your /budget amount, not last session\'s extra', async ($, on) => {
   on('session.usage', usage(1.25))
-  memory(on, 's2', { budget: 1, extra: { session: 's1', amount: 3 } })
+  memory(on, 's2', { budget: 1, extra: { s1: 3 } })
   const seen = asking(on, 'Stop here')
   startable(on)
   await start($)
@@ -129,14 +131,14 @@ test('a new session starts from your /budget amount, not last session\'s extra',
   expect(seen.asked).toBe(1)
 })
 
-test('over budget, adding a dollar to send a prompt saves nothing for new sessions', async ($, on) => {
+test('over budget, adding a dollar to send a prompt raises this session only', async ($, on) => {
   on('session.usage', usage(1.25))
   const saved = memory(on, 's1', { budget: 1 })
   on('tool.call', tools('Add $1 and send'))
   on('prompt.submit', ($, e) => ({ text: e.text }))
   const out = await $.prompt.submit({ text: 'keep going', origin: { kind: 'composer' } })
   expect(out.drop).toBeUndefined()
-  expect(saved.budget).toBe(1)
+  expect(saved).toEqual({ budget: 1, extra: { s1: 1 } })
 })
 
 test('a prompt from Remote Control, or with no origin, is asked about too', async ($, on) => {

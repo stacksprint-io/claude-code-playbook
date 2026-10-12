@@ -77,14 +77,15 @@ async function costNow($): Promise<number> {
   return usage.cost ? usage.cost.usd : 0
 }
 
-// "Add $1" raises this session only. It's saved under the session's id, so a reload keeps it
-// and a new session starts from your /budget amount.
+// "Add $1" raises this session only. Each session's extra is saved under its own id, so a reload
+// keeps it, sessions running side by side keep their own, and a new session starts from /budget.
 async function addDollar($) {
   budget += 1
   const session = await $.session.id()
-  const extra = await $.store.get('extra')
-  const amount = (extra?.session === session ? extra.amount : 0) + 1
-  await $.store.set('extra', { session, amount })
+  const extra = (await $.store.get('extra')) ?? {}
+  extra[session] = (extra[session] ?? 0) + 1
+  // Keep the 20 most recent sessions
+  await $.store.set('extra', Object.fromEntries(Object.entries(extra).slice(-20)))
   $.ui.invalidate('ui.render')
 }
 
@@ -119,8 +120,8 @@ export function register(on) {
     recording = (await $.store.get('recording')) === true
     budget = Number((await $.store.get('budget')) ?? 1)
     // After a reload, keep what you added this session
-    const extra = await $.store.get('extra')
-    if (extra?.session === (await $.session.id())) budget += extra.amount
+    const extra = (await $.store.get('extra')) ?? {}
+    budget += extra[await $.session.id()] ?? 0
     await $.command.register({ name: 'hud', description: 'Open the session dashboard', immediate: true })
     await $.command.register({ name: 'budget', description: 'Set the budget each session starts with, in dollars', argumentHint: '[amount]', immediate: true })
     await $.command.register({ name: 'recording', description: 'Hide keys, tokens and emails on screen', argumentHint: '[on|off]', immediate: true })
@@ -331,7 +332,7 @@ export function register(on) {
     // Only ask about prompts a person sent. A notification or another plugin's prompt goes through;
     // any tool call it leads to still meets budgetGate.
     // composer is your Enter at the terminal, bridge a message from Remote Control.
-    // With no origin at all, ask anyway.
+    // Claude Code sets an origin on every prompt; if one ever arrives without it, ask anyway.
     const kind = e.origin?.kind
     if (kind && kind !== 'composer' && kind !== 'bridge') return next(e)
     const cost = await costNow($)
@@ -356,7 +357,10 @@ export function register(on) {
     if (!(amount > 0)) return { text: 'Budget is $' + budget.toFixed(2) + '. Set one with /budget 2.50' }
     budget = amount
     await $.store.set('budget', budget)
-    await $.store.delete('extra')
+    // Your new amount replaces what this session added
+    const extra = (await $.store.get('extra')) ?? {}
+    delete extra[await $.session.id()]
+    await $.store.set('extra', extra)
     $.ui.invalidate('ui.render')
     return { text: 'Budget set to $' + budget.toFixed(2) + '. New sessions start with it too.' }
   })
