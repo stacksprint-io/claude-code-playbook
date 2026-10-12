@@ -24,7 +24,8 @@ Read this before touching anything. It is short on purpose; keep it that way (se
 `.claude/settings.json` (committed) holds the team allowlist and three hooks; `.claude/agents/` the
 reviewer / test-writer / researcher subagents; `.claude/skills/` the `fastapi-endpoint` and
 `release-notes` skills; `mcp_server/server.py` an MCP server over the database; `scripts/` the
-three-lane worktree race and the hidden-test judge. The README maps each to the video that shows it.
+three-lane worktree race and the hidden-test judge; `mods/session-guard/` a Claude Code mod, listed
+by `.claude-plugin/marketplace.json`. The README maps each to the video that shows it.
 
 ## Keep this file small
 

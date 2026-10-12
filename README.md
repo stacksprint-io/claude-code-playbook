@@ -32,6 +32,9 @@ scripts/
   ci.yml                       ruff + pytest on push and PR
   auto-fix.yml                 CI fails → Claude fixes it and pushes to the same branch (with a loop guard)
   pr-review.yml                every PR gets a real review comment from Claude
+.claude-plugin/
+  marketplace.json             this repo as a plugin marketplace (name: stacksprint)
+mods/session-guard/            a Claude Code mod: status band, /hud dashboard, budget guard, recording mode
 app/ · static/ · tests/        the project all of this runs against: FastAPI + SQLite + Bootstrap, 3 endpoints, 3 tests
 ```
 
@@ -106,6 +109,21 @@ pre-approved, because nobody is there to answer a dialog). `judge.sh` then copie
 lane and runs the full suite. The lanes never see the hidden file, so a model cannot game a test
 it has not read.
 
+### Mods (`mods/`)
+
+`mods/session-guard/` is a complete Claude Code mod (v2.1.287 or later), written by hand and
+explained line by line on the channel. This repo is also a marketplace, so you can install it in
+any session:
+
+```
+/plugin marketplace add stacksprint-io/claude-code-playbook
+/plugin install session-guard@stacksprint
+```
+
+Before you install any mod, run `claude plugin validate ./mods/session-guard` and read its
+`hooks:` and `calls:` lines. The mod's own [README](mods/session-guard/README.md) covers what
+each feature does and doesn't do.
+
 ### CI (`.github/workflows/`)
 
 `auto-fix.yml` needs the Claude GitHub App installed on the repo and an `ANTHROPIC_API_KEY`
@@ -121,6 +139,7 @@ re-trigger itself forever. `pr-review.yml` gives the action `GH_TOKEN` so its `g
 | `scripts/judge.sh`, hidden tests | I Raced Opus 5.5, Opus 5 and Sonnet 5 on the Same Bug |
 | `.github/workflows/auto-fix.yml` | Claude Code fixes your failing CI |
 | `.github/workflows/pr-review.yml` | Automating code review with Claude Code |
+| `mods/session-guard/`, the marketplace | Claude Code Mods: Complete Guide (Install, Build Your Own, Stay Safe) |
 | `mcp_server/server.py` | MCP servers explained |
 | `CLAUDE.md` | Context and memory in Claude Code |
 | the tiny agent loop this grew out of | I Built My Own Claude Code in 30 Minutes With Python |
