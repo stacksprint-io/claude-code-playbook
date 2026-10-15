@@ -17,3 +17,7 @@ class Order(SQLModel, table=True):
 class OrderCreate(SQLModel):
     customer: str
     total_cents: int
+
+
+class OrderStatusUpdate(SQLModel):
+    status: OrderStatus

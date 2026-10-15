@@ -34,12 +34,19 @@
     const res = await fetch("/orders");
     const orders = await res.json();
     document.getElementById("rows").innerHTML = orders.map((o) =>
-      `<tr><td>${o.id}</td><td>${o.customer}</td><td>${money(o.total_cents)}</td><td><span class="badge text-bg-secondary">${o.status}</span></td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`
+      `<tr><td>${o.id}</td><td>${o.customer}</td><td>${money(o.total_cents)}</td><td><select class="form-select form-select-sm w-auto" data-order="${o.id}">${["new", "paid", "shipped"].map((s) => `<option${s === o.status ? " selected" : ""}>${s}</option>`).join("")}</select></td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`
     ).join("");
     const stats = await (await fetch("/orders/stats")).json();
     document.getElementById("stat-count").textContent = stats.count;
     document.getElementById("stat-total").textContent = money(stats.total_cents);
   }
+  document.getElementById("rows").addEventListener("change", async (e) => {
+    const id = e.target.dataset.order;
+    if (!id) return;
+    await fetch(`/orders/${id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: e.target.value }) });
+    load();
+  });
   document.getElementById("new-order").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
