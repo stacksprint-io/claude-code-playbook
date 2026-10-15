@@ -1,9 +1,11 @@
 """Orders service: FastAPI + SQLite + a Bootstrap page. Small on purpose."""
 
+import csv
+import io
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, col, select
 
@@ -41,6 +43,21 @@ def create_order(payload: OrderCreate, session: Session = Depends(get_session)) 
     session.commit()
     session.refresh(order)
     return order
+
+
+# Declared before /orders/{order_id} so that route doesn't swallow "orders.csv".
+@app.get("/orders.csv")
+def export_orders_csv(session: Session = Depends(get_session)) -> Response:
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "customer", "total_cents", "status", "created_at"])
+    for o in session.exec(select(Order).order_by(col(Order.id))):
+        writer.writerow([o.id, o.customer, o.total_cents, o.status, o.created_at.isoformat()])
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="orders.csv"'},
+    )
 
 
 @app.get("/orders/{order_id}", response_model=Order)
