@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, col, select
 
 from .db import get_session, init_db
-from .models import Order, OrderCreate
+from .models import Order, OrderCreate, OrderStatusUpdate
 
 
 @asynccontextmanager
@@ -48,4 +48,18 @@ def get_order(order_id: int, session: Session = Depends(get_session)) -> Order:
     order = session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="order not found")
+    return order
+
+
+@app.patch("/orders/{order_id}/status", response_model=Order)
+def update_order_status(
+    order_id: int, payload: OrderStatusUpdate, session: Session = Depends(get_session)
+) -> Order:
+    order = session.get(Order, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="order not found")
+    order.status = payload.status
+    session.add(order)
+    session.commit()
+    session.refresh(order)
     return order
