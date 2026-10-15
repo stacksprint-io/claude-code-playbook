@@ -5,10 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, func, select
 
 from .db import get_session, init_db
-from .models import Order, OrderCreate, OrderStatusUpdate
+from .models import Order, OrderCreate, OrderStatus, OrderStatusUpdate
 
 
 @asynccontextmanager
@@ -28,8 +28,13 @@ def index() -> str:
 
 
 @app.get("/orders", response_model=list[Order])
-def list_orders(session: Session = Depends(get_session)) -> list[Order]:
-    return list(session.exec(select(Order).order_by(col(Order.id).desc())))
+def list_orders(
+    status: OrderStatus | None = None, session: Session = Depends(get_session)
+) -> list[Order]:
+    query = select(Order)
+    if status is not None:
+        query = query.where(Order.status == status)
+    return list(session.exec(query.order_by(col(Order.id).desc())))
 
 
 @app.post("/orders", response_model=Order, status_code=201)
@@ -41,6 +46,14 @@ def create_order(payload: OrderCreate, session: Session = Depends(get_session)) 
     session.commit()
     session.refresh(order)
     return order
+
+
+@app.get("/orders/stats")
+def order_stats(session: Session = Depends(get_session)) -> dict[str, int]:
+    count, total = session.exec(
+        select(func.count(col(Order.id)), func.coalesce(func.sum(Order.total_cents), 0))
+    ).one()
+    return {"count": count, "total_cents": total}
 
 
 @app.get("/orders/{order_id}", response_model=Order)
