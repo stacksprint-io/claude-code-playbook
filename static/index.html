@@ -14,6 +14,12 @@
     <div class="col-auto"><input class="form-control" name="total" type="number" min="0" step="0.01" placeholder="Total" required></div>
     <div class="col-auto"><button class="btn btn-primary">Add order</button></div>
   </form>
+  <div class="card mb-3">
+    <div class="card-body d-flex gap-5">
+      <div><div class="text-body-secondary small">Orders</div><div class="h4 mb-0" id="stat-count">0</div></div>
+      <div><div class="text-body-secondary small">Total</div><div class="h4 mb-0" id="stat-total">$0.00</div></div>
+    </div>
+  </div>
   <table class="table table-striped">
     <thead><tr><th>#</th><th>Customer</th><th>Total</th><th>Status</th><th>Created</th></tr></thead>
     <tbody id="rows"></tbody>
@@ -27,6 +33,9 @@
     document.getElementById("rows").innerHTML = orders.map((o) =>
       `<tr><td>${o.id}</td><td>${o.customer}</td><td>${money(o.total_cents)}</td><td><span class="badge text-bg-secondary">${o.status}</span></td><td>${new Date(o.created_at).toLocaleString()}</td></tr>`
     ).join("");
+    const stats = await (await fetch("/orders/stats")).json();
+    document.getElementById("stat-count").textContent = stats.count;
+    document.getElementById("stat-total").textContent = money(stats.total_cents);
   }
   document.getElementById("new-order").addEventListener("submit", async (e) => {
     e.preventDefault();

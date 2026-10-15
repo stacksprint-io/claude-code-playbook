@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, func, select
 
 from .db import get_session, init_db
 from .models import Order, OrderCreate, OrderStatus
@@ -46,6 +46,14 @@ def create_order(payload: OrderCreate, session: Session = Depends(get_session)) 
     session.commit()
     session.refresh(order)
     return order
+
+
+@app.get("/orders/stats")
+def order_stats(session: Session = Depends(get_session)) -> dict[str, int]:
+    count, total = session.exec(
+        select(func.count(col(Order.id)), func.coalesce(func.sum(Order.total_cents), 0))
+    ).one()
+    return {"count": count, "total_cents": total}
 
 
 @app.get("/orders/{order_id}", response_model=Order)
