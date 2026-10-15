@@ -1,6 +1,9 @@
 from datetime import UTC, datetime
+from typing import Literal
 
 from sqlmodel import Field, SQLModel
+
+OrderStatus = Literal["new", "paid", "shipped"]
 
 
 class Order(SQLModel, table=True):
