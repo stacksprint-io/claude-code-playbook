@@ -6,18 +6,19 @@ allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr diff:*), Bas
 ---
 
 ## The pull request
-!`gh pr view $ARGUMENTS --json number,title,headRefName,baseRefName,state`
+!`gh pr view $ARGUMENTS --json number,title,headRefName,baseRefName,state || true`
 
 ## Checks
 !`gh pr checks $ARGUMENTS || true`
 
 ## Diff
-!`gh pr diff $ARGUMENTS`
+!`gh pr diff $ARGUMENTS || true`
 
 ## The PR's own files
-!`git fetch -q origin pull/$ARGUMENTS/head:refs/pr/$ARGUMENTS && echo "fetched: read files with git show refs/pr/$ARGUMENTS:<path>"`
+!`git fetch -q origin pull/$ARGUMENTS/head:refs/pr/$ARGUMENTS && echo "fetched: read files with git show refs/pr/$ARGUMENTS:<path>" || true`
 
 ## Review in this order
+0. If a section above is empty (no gh where this runs, as in a cloud thread), get the PR, its checks and its diff with the GitHub tools you have.
 1. Branch: one pull request, from its own branch, into main.
 2. Checks: take CI from the Checks section, not the author's word. A failing or missing check is a BLOCKER.
 3. Files: read every changed file at the PR's head (git show refs/pr/<n>:<path>) and the tests that cover it. Check each against checklist.md, and against docs/spec.md's Done means if it builds a spec feature.
