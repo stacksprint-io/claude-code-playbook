@@ -18,7 +18,7 @@ allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr diff:*), Bas
 !`git fetch -q origin pull/$ARGUMENTS/head:refs/pr/$ARGUMENTS && echo "fetched: read files with git show refs/pr/$ARGUMENTS:<path>" || true`
 
 ## Review in this order
-0. If a section above is empty (no gh where this runs, as in a cloud thread), get the PR, its checks and its diff with the GitHub tools you have.
+0. If a section above is empty or an error (gh can't reach GitHub where this runs, as in a cloud thread), get the PR, its checks and its diff with the GitHub tools you have.
 1. Branch: one pull request, from its own branch, into main.
 2. Checks: take CI from the Checks section, not the author's word. A failing or missing check is a BLOCKER.
 3. Files: read every changed file at the PR's head (git show refs/pr/<n>:<path>) and the tests that cover it. Check each against checklist.md, and against docs/spec.md's Done means if it builds a spec feature.
