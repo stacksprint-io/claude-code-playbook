@@ -50,6 +50,14 @@ def create_order(payload: OrderCreate, session: Session = Depends(get_session)) 
     return order
 
 
+# Spreadsheet apps run cells starting with these as formulas (CSV injection).
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value: str) -> str:
+    return "'" + value if value.startswith(_FORMULA_PREFIXES) else value
+
+
 # Declared before /orders/{order_id} so that route doesn't swallow "orders.csv".
 @app.get("/orders.csv")
 def export_orders_csv(session: Session = Depends(get_session)) -> Response:
@@ -57,7 +65,9 @@ def export_orders_csv(session: Session = Depends(get_session)) -> Response:
     writer = csv.writer(buf)
     writer.writerow(["id", "customer", "total_cents", "status", "created_at"])
     for o in session.exec(select(Order).order_by(col(Order.id))):
-        writer.writerow([o.id, o.customer, o.total_cents, o.status, o.created_at.isoformat()])
+        writer.writerow(
+            [o.id, _csv_safe(o.customer), o.total_cents, o.status, o.created_at.isoformat()]
+        )
     return Response(
         content=buf.getvalue(),
         media_type="text/csv",

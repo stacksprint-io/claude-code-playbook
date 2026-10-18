@@ -30,3 +30,12 @@ def test_order_by_id_still_works(client):
     client.post("/orders", json={"customer": "Ada", "total_cents": 1})
     assert client.get("/orders/1").status_code == 200
     assert client.get("/orders/999").status_code == 404
+
+
+def test_export_csv_escapes_formula_customers(client):
+    risky = ['=HYPERLINK("http://evil","x")', "+1+1", "-2", "@SUM(A1)", "\tTab", "\rCR"]
+    for name in [*risky, "Ada"]:
+        client.post("/orders", json={"customer": name, "total_cents": 1})
+    r = client.get("/orders.csv")
+    rows = list(csv.reader(io.StringIO(r.text, newline="")))
+    assert [row[1] for row in rows[1:]] == ["'" + name for name in risky] + ["Ada"]
