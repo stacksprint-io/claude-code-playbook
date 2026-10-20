@@ -22,6 +22,8 @@ CLAUDE.md                      project memory: the run/test commands, the conven
 .claude/skills/
   fastapi-endpoint/SKILL.md    endpoint + test + Bootstrap form, all three in one pass
   release-notes/SKILL.md       commits since the last tag → a CHANGELOG section
+  pr-review/SKILL.md           review a PR against this repo's rules, ranked BLOCKER / SHOULD / NIT
+  pr-review/checklist.md       the rules it checks (supporting file)
 mcp_server/server.py           a FastMCP server over the orders database: two read tools, one guarded write
 scripts/
   race.sh                      three Claude Code sessions in three git worktrees, one prompt, one model per lane
@@ -89,6 +91,32 @@ description is the whole trick: `fastapi-endpoint` lists the verbs people actual
 ("add", "expose", "create an endpoint for"). `release-notes` shows the other pattern: a shell
 command inlined with `` !`git log ...` `` so the skill sees live data. Keep those inline
 commands plain; command substitution inside them is blocked by the permission check.
+
+#### `pr-review`: review a pull request against this repo's own rules
+
+```
+/pr-review 15                 # or just ask: "is PR 15 ready to merge?"
+```
+
+Reviews a PR against `CLAUDE.md`, the spec's Done means, its tests and CI, and ranks what to fix.
+Built step by step in the *Claude Code Skills Tutorial* video on the StackSprint YouTube channel.
+
+- **Frontmatter:** `description` leads with the use case so Claude picks it from a plain question.
+  `allowed-tools` pre-approves only reads (`gh pr view/checks/diff`, `git fetch/show`, Read, Grep,
+  Glob). `gh pr comment` is left off on purpose: posting changes GitHub, so it asks you first.
+- **Body:** `` !`gh pr view $ARGUMENTS ...` `` lines pull the PR, its checks and its diff in
+  before Claude reads the skill, and `git fetch` brings the PR's own files into `refs/pr/<n>`
+  without switching your branch. Review order: branch, then checks (CI's word, not the
+  author's), then the changed files. The report is one line per finding, blockers first, and
+  ends with "Post this review as a comment on the PR?".
+- **`checklist.md`:** the rules that change from repo to repo (money in integer cents, status
+  values, tests per endpoint, ...). Step 3 reads it, so `SKILL.md` stays small.
+- **Cloud sessions:** `gh pr` commands are blocked there, so each `!` line ends in `|| true` and
+  step 0 falls back to Claude's own GitHub tools when a section comes back empty or as an error.
+
+**Use it in your own repos:** copy the folder to `~/.claude/skills/pr-review/`, delete
+`checklist.md`, and change step 3 to check "the repo's CLAUDE.md and any docs it points to".
+It then works as a personal skill in every repo you open.
 
 ### MCP (`mcp_server/server.py`)
 
