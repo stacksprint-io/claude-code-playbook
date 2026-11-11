@@ -22,8 +22,9 @@ CLAUDE.md                      project memory: the run/test commands, the conven
 .claude/skills/
   fastapi-endpoint/SKILL.md    endpoint + test + Bootstrap form, all three in one pass
   release-notes/SKILL.md       commits since the last tag → a CHANGELOG section
-  pr-review/SKILL.md           review a PR against this repo's rules, ranked BLOCKER / SHOULD / NIT
+  pr-review/SKILL.md           review a PR against this repo's rules: risk, verdict, ranked findings
   pr-review/checklist.md       the rules it checks (supporting file)
+  pr-review/walkthrough.md     records a video of each bug a user can see (supporting file)
 mcp_server/server.py           a FastMCP server over the orders database: two read tools, one guarded write
 scripts/
   race.sh                      three Claude Code sessions in three git worktrees, one prompt, one model per lane
@@ -98,24 +99,39 @@ commands plain; command substitution inside them is blocked by the permission ch
 /pr-review 15                 # or just ask: "is PR 15 ready to merge?"
 ```
 
-Reviews a PR against `CLAUDE.md`, the spec's Done means, its tests and CI, and ranks what to fix.
-Built step by step in the *Claude Code Skills Tutorial* video on the StackSprint YouTube channel.
+Reviews a PR against `CLAUDE.md`, the spec's Done means, its tests, its CI and the issue it closes,
+rates its risk, and records a short video of each bug a user can see. Built step by step in the
+*Claude Code Skills Tutorial* video on the StackSprint YouTube channel; the risk summary and the
+walkthrough video came in a follow-up episode.
+
+**Needs:** GitHub CLI 2.99 or newer (for `gh pr comment --attach`) and Playwright's CLI
+(`npm install -g @playwright/cli`) for the walkthrough.
 
 - **Frontmatter:** `description` leads with the use case so Claude picks it from a plain question.
-  `allowed-tools` pre-approves only reads (`gh pr view/checks/diff`, `git fetch/show`, Read, Grep,
-  Glob). `gh pr comment` is left off on purpose: posting changes GitHub, so it asks you first.
+  `allowed-tools` pre-approves reads (`gh pr view/checks/diff`, `gh issue view`, `git fetch/show`,
+  Read, Grep, Glob), `git worktree` and `playwright-cli`. `gh pr comment` is left off on purpose:
+  posting changes GitHub, so it asks you first.
 - **Body:** `` !`gh pr view $ARGUMENTS ...` `` lines pull the PR, its checks and its diff in
   before Claude reads the skill, and `git fetch` brings the PR's own files into `refs/pr/<n>`
   without switching your branch. Review order: branch, then checks (CI's word, not the
-  author's), then the changed files. The report is one line per finding, blockers first, and
-  ends with "Post this review as a comment on the PR?".
+  author's), then the changed files, then the walkthrough when the diff changes what a user sees.
+- **Report:** a Summary first (Risk Low / Medium / High from a fixed rule, a verdict of "OK to
+  merge" or "Merge blocked until:" with each blocker and its file:line, and what was tested),
+  then numbered findings with file:line, the fix and the video chapter that shows it, then what
+  passed. It ends with "Post this review with the walkthrough video?" and posts only after a yes.
+- **`walkthrough.md`:** runs the PR's own version of the app from a worktree in `.review/`, clicks
+  through the issue's points, and records one numbered chapter per bug with a red box on the
+  element (Playwright's `video-chapter` and screencast overlays). Nothing visible to fix? It
+  records the tested path instead. The video stays under GitHub's 10 MB limit and is attached to
+  the same comment as the review. Keep `.review/` out of your commits.
 - **`checklist.md`:** the rules that change from repo to repo (money in integer cents, status
   values, tests per endpoint, ...). Step 3 reads it, so `SKILL.md` stays small.
 - **Cloud sessions:** `gh pr` commands are blocked there, so each `!` line ends in `|| true` and
   step 0 falls back to Claude's own GitHub tools when a section comes back empty or as an error.
 
 **Use it in your own repos:** copy the folder to `~/.claude/skills/pr-review/`, delete
-`checklist.md`, and change step 3 to check "the repo's CLAUDE.md and any docs it points to".
+`checklist.md`, and change step 3 to check "the repo's CLAUDE.md, any docs it points to, and
+every point of the issue the PR closes".
 It then works as a personal skill in every repo you open.
 
 ### MCP (`mcp_server/server.py`)
